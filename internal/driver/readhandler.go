@@ -11,10 +11,11 @@ package driver
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
-	sdkModel "github.com/edgexfoundry/device-sdk-go/v2/pkg/models"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	sdkModel "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
 )
@@ -30,14 +31,18 @@ func (d *Driver) HandleReadCommands(deviceName string, protocols map[string]mode
 	if err != nil {
 		return nil, err
 	}
-	ctx := context.Background()
+	// add an arbitrary timeout to demonstrate how to stop a subscription
+	// with a context.
+	timeout := 60 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
 	client := opcua.NewClient(endpoint, opcua.SecurityMode(ua.MessageSecurityModeNone))
 	if err := client.Connect(ctx); err != nil {
 		d.Logger.Warnf("Driver.HandleReadCommands: Failed to connect OPCUA client, %s", err)
 		return nil, err
 	}
-	defer client.Close()
+	defer client.Close(ctx)
 
 	return d.processReadCommands(client, reqs)
 }
@@ -93,7 +98,10 @@ func makeReadRequest(deviceClient *opcua.Client, req sdkModel.CommandRequest) (*
 		},
 		TimestampsToReturn: ua.TimestampsToReturnBoth,
 	}
-	resp, err := deviceClient.Read(request)
+	timeout := 60 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	resp, err := deviceClient.Read(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("Driver.handleReadCommands: Read failed: %s", err)
 	}
@@ -143,8 +151,8 @@ func makeMethodCall(deviceClient *opcua.Client, req sdkModel.CommandRequest) (*s
 		MethodID:       mid,
 		InputArguments: inputs,
 	}
-
-	resp, err := deviceClient.Call(request)
+	ctx := context.Background()
+	resp, err := deviceClient.Call(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("Driver.handleReadCommands: Method call failed: %s", err)
 	}

@@ -11,8 +11,8 @@ package config
 import (
 	"fmt"
 
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/errors"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/errors"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 )
 
 // ServiceConfig configuration struct
@@ -95,5 +95,9 @@ func FetchEndpoint(protocols map[string]models.ProtocolProperties) (string, erro
 	if !ok {
 		return "", errors.NewCommonEdgeX(errors.KindContractInvalid, fmt.Sprintf("'%s' not found in the '%s' protocol properties", Endpoint, Protocol), nil)
 	}
-	return endpoint, nil
+	endpointString, ok := endpoint.(string)
+	if !ok {
+		return "", errors.NewCommonEdgeX(errors.KindContractInvalid, fmt.Sprintf("cannot convert '%v' to string type", endpointString), nil)
+	}
+	return endpointString, nil
 }

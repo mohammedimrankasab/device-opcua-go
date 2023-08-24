@@ -12,9 +12,9 @@ deviceResources:
     properties:
       valueType: "Int32"
       readWrite: "R"
-      defaultValue: "0"
-      minimum: "0"
-      maximum: "30"
+      defaultValue: 0
+      minimum: 0
+      maximum: 30
     attributes:
       { nodeId: "ns=3;i=1001" }
   -
@@ -23,9 +23,9 @@ deviceResources:
     properties:
       valueType: "Float64"
       readWrite: "R"
-      defaultValue: "0.0"
-      minimum: "-2.0"
-      maximum: "2.0"
+      defaultValue: 0.0
+      minimum: -2.0
+      maximum: 2.0
     attributes:
       { nodeId: "ns=3;i=1002" }
 

@@ -11,11 +11,12 @@ package driver
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
-	sdkModel "github.com/edgexfoundry/device-sdk-go/v2/pkg/models"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/common"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	sdkModel "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/common"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
 )
@@ -36,13 +37,15 @@ func (d *Driver) HandleWriteCommands(deviceName string, protocols map[string]mod
 		return err
 	}
 
-	ctx := context.Background()
+	timeout := 60 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	client := opcua.NewClient(endpoint, opcua.SecurityMode(ua.MessageSecurityModeNone))
 	if err := client.Connect(ctx); err != nil {
 		d.Logger.Warnf("Driver.HandleWriteCommands: Failed to connect OPCUA client, %s", err)
 		return err
 	}
-	defer client.Close()
+	defer client.Close(ctx)
 
 	return d.processWriteCommands(client, reqs, params)
 }
@@ -95,7 +98,10 @@ func (d *Driver) handleWriteCommandRequest(deviceClient *opcua.Client, req sdkMo
 		},
 	}
 
-	resp, err := deviceClient.Write(request)
+	timeout := 60 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	resp, err := deviceClient.Write(ctx, request)
 	if err != nil {
 		d.Logger.Errorf("Driver.handleWriteCommands: Write value %v failed: %s", v, err)
 		return err

@@ -14,11 +14,11 @@ import (
 	"sync"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
-	sdkModel "github.com/edgexfoundry/device-sdk-go/v2/pkg/models"
-	"github.com/edgexfoundry/device-sdk-go/v2/pkg/service"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/clients/logger"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/errors"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	"github.com/edgexfoundry/device-sdk-go/v3/pkg/interfaces"
+	sdkModel "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/logger"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/errors"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 )
 
 var once sync.Once
@@ -26,6 +26,7 @@ var driver *Driver
 
 // Driver struct
 type Driver struct {
+	sdk           interfaces.DeviceServiceSDK
 	Logger        logger.LoggingClient
 	AsyncCh       chan<- *sdkModel.AsyncValues
 	serviceConfig *config.ServiceConfig
@@ -35,7 +36,7 @@ type Driver struct {
 }
 
 // NewProtocolDriver returns a new protocol driver object
-func NewProtocolDriver() sdkModel.ProtocolDriver {
+func NewProtocolDriver() interfaces.ProtocolDriver {
 	once.Do(func() {
 		driver = new(Driver)
 	})
@@ -43,30 +44,26 @@ func NewProtocolDriver() sdkModel.ProtocolDriver {
 }
 
 // Initialize performs protocol-specific initialization for the device service
-func (d *Driver) Initialize(lc logger.LoggingClient, asyncCh chan<- *sdkModel.AsyncValues, deviceCh chan<- []sdkModel.DiscoveredDevice) error {
-	d.Logger = lc
-	d.AsyncCh = asyncCh
+func (d *Driver) Initialize(sdk interfaces.DeviceServiceSDK) error {
+	d.sdk = sdk
+	d.Logger = sdk.LoggingClient()
+	d.AsyncCh = sdk.AsyncValuesChannel()
 	d.serviceConfig = &config.ServiceConfig{}
 	d.mu.Lock()
 	d.resourceMap = make(map[uint32]string)
 	d.mu.Unlock()
 
-	ds := service.RunningService()
-	if ds == nil {
-		return errors.NewCommonEdgeXWrapper(fmt.Errorf("unable to get running device service"))
+	if err := sdk.LoadCustomConfig(d.serviceConfig, CustomConfigSectionName); err != nil {
+		return errors.NewCommonEdgeX("unable to load '%s' custom configuration: %s", CustomConfigSectionName, err)
 	}
 
-	if err := ds.LoadCustomConfig(d.serviceConfig, CustomConfigSectionName); err != nil {
-		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to load '%s' custom configuration", CustomConfigSectionName), err)
-	}
-
-	lc.Debugf("Custom config is: %v", d.serviceConfig)
+	d.Logger.Debugf("Custom config is: %v", d.serviceConfig)
 
 	if err := d.serviceConfig.OPCUAServer.Validate(); err != nil {
 		return errors.NewCommonEdgeXWrapper(err)
 	}
 
-	if err := ds.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
+	if err := sdk.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
 		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to listen for changes for '%s' custom configuration", WritableInfoSectionName), err)
 	}
 
@@ -130,7 +127,7 @@ func (d *Driver) RemoveDevice(deviceName string, protocols map[string]models.Pro
 	return nil
 }
 
-// Stop the protocol-specific DS code to shutdown gracefully, or
+// Stop the protocol-specific DS code to shut down gracefully, or
 // if the force parameter is 'true', immediately. The driver is responsible
 // for closing any in-use channels, including the channel used to send async
 // readings (if supported).
@@ -149,4 +146,19 @@ func getNodeID(attrs map[string]interface{}, id string) (string, error) {
 	}
 
 	return identifier.(string), nil
+}
+
+func (d *Driver) Start() error {
+	return nil
+}
+
+func (d *Driver) Discover() error {
+	return fmt.Errorf("driver's Discover function isn't implemented")
+}
+func (d *Driver) ValidateDevice(device models.Device) error {
+	_, err := config.FetchEndpoint(device.Protocols)
+	if err != nil {
+		return fmt.Errorf("invalid protocol properties, %v", err)
+	}
+	return nil
 }

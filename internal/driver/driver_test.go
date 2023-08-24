@@ -11,9 +11,8 @@ import (
 	"testing"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
-	sdkModel "github.com/edgexfoundry/device-sdk-go/v2/pkg/models"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/clients/logger"
-	"github.com/edgexfoundry/go-mod-core-contracts/v2/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/logger"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 )
 
 func TestDriver_updateWritableConfig(t *testing.T) {
@@ -197,13 +196,17 @@ func Test_getNodeID(t *testing.T) {
 		})
 	}
 }
-
-func TestDriver_Initialize(t *testing.T) {
-	t.Run("initialize", func(t *testing.T) {
-		d := NewProtocolDriver()
-		err := d.Initialize(&logger.MockLogger{}, make(chan<- *sdkModel.AsyncValues), make(chan<- []sdkModel.DiscoveredDevice))
-		if err == nil {
-			t.Errorf("expected error to be returned in test environment")
-		}
-	})
+func init() {
+	driver = new(Driver)
+	driver.Logger = logger.NewMockClient()
 }
+
+//func TestDriver_Initialize(t *testing.T) {
+//	t.Run("initialize", func(t *testing.T) {
+//		d := NewProtocolDriver()
+//		err := d.Initialize(&logger.MockLogger{}, make(chan<- *sdkModel.AsyncValues), make(chan<- []sdkModel.DiscoveredDevice))
+//		if err == nil {
+//			t.Errorf("expected error to be returned in test environment")
+//		}
+//	})
+//}

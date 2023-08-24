@@ -1,0 +1,10 @@
+deviceList:
+  - name: SimulationServer
+    profileName: OPCUA-Server
+    description: OPCUA device is created for test purpose
+    labels:
+      - test
+    protocols:
+      opcua:
+#        Endpoint: 'opc.tcp://127.0.0.1:53530/OPCUA/SimulationServer'
+        Endpoint: "opc.tcp://uademo.prosysopc.com:53530/OPCUA/SimulationServer "

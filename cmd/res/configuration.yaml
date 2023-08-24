@@ -1,0 +1,50 @@
+Writable:
+  LogLevel: INFO
+
+# uncomment when running from command-line in hybrid mode with -cp -o flags
+Registry:
+ Host: localhost
+
+Device:
+  DataTransform: true
+  MaxCmdOps: 128
+  MaxCmdValueLen: 256
+  DevicesDir: ./res/devices
+  ProfilesDir: ./res/profiles
+  UpdateLastConnected: false
+  Labels: []
+  EnableAsyncReadings: true
+  AsyncBufferSize: 16
+  UseMessageBus: true
+
+Clients:
+ core-metadata:
+   Protocol: http
+   Host: localhost
+   Port: 59881
+ core-data:
+   Protocol: http
+   Host: localhost
+   Port: 59881
+
+Service:
+  HealthCheckInterval: 10s
+  Host: localhost
+  Port: 59997
+  StartupMsg: device opcua started
+  MaxRequestSize: 0
+  RequestTimeout: 5s
+
+MessageBus:
+  Host: localhost # uncomment when running from command-line in hybrid mode
+  Optional:
+    ClientId: device-opcua
+
+OPCUAServer:
+  DeviceName: SimulationServer
+  Policy: None
+  Mode: None
+  CertFile: ''
+  KeyFile: ''
+  Writable:
+    Resources: 'Counter,Random'
