@@ -80,7 +80,6 @@ func (d *Driver) updateWritableConfig(rawWritableConfig interface{}) {
 	}
 
 	d.cleanup()
-
 	d.serviceConfig.OPCUAServer.Writable = *updated
 
 	go d.startSubscriber()

@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/edgexfoundry/device-opcua-go/internal/config"
 	sdkModel "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
 	"github.com/edgexfoundry/go-mod-core-contracts/v3/common"
 	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
@@ -31,16 +30,18 @@ func (d *Driver) HandleWriteCommands(deviceName string, protocols map[string]mod
 	d.Logger.Debugf("Driver.HandleWriteCommands: protocols: %v, resource: %v, parameters: %v", protocols, reqs[0].DeviceResourceName, params)
 	var err error
 
-	// create device client and open connection
-	endpoint, err := config.FetchEndpoint(protocols)
-	if err != nil {
-		return err
-	}
-
 	timeout := 60 * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	client := opcua.NewClient(endpoint, opcua.SecurityMode(ua.MessageSecurityModeNone))
+
+	device, err := d.sdk.GetDeviceByName(deviceName)
+	if err != nil {
+		return err
+	}
+	client, err := d.getClient(ctx, device)
+	if err != nil {
+		return err
+	}
 	if err := client.Connect(ctx); err != nil {
 		d.Logger.Warnf("Driver.HandleWriteCommands: Failed to connect OPCUA client, %s", err)
 		return err
