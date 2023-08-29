@@ -33,6 +33,7 @@ type Driver struct {
 	resourceMap   map[uint32]string
 	mu            sync.Mutex
 	ctxCancel     context.CancelFunc
+	deviceMap     map[uint32]string
 }
 
 // NewProtocolDriver returns a new protocol driver object
@@ -51,6 +52,7 @@ func (d *Driver) Initialize(sdk interfaces.DeviceServiceSDK) error {
 	d.serviceConfig = &config.ServiceConfig{}
 	d.mu.Lock()
 	d.resourceMap = make(map[uint32]string)
+	d.deviceMap = make(map[uint32]string)
 	d.mu.Unlock()
 
 	if err := sdk.LoadCustomConfig(d.serviceConfig, CustomConfigSectionName); err != nil {
@@ -59,9 +61,9 @@ func (d *Driver) Initialize(sdk interfaces.DeviceServiceSDK) error {
 
 	d.Logger.Debugf("Custom config is: %v", d.serviceConfig)
 
-	if err := d.serviceConfig.OPCUAServer.Validate(); err != nil {
-		return errors.NewCommonEdgeXWrapper(err)
-	}
+	//if err := d.serviceConfig.OPCUAServerConf.ValidateConf(); err != nil {
+	//	return errors.NewCommonEdgeXWrapper(err)
+	//}
 
 	if err := sdk.ListenForCustomConfigChanges(&d.serviceConfig.OPCUAServer.Writable, WritableInfoSectionName, d.updateWritableConfig); err != nil {
 		return errors.NewCommonEdgeX(errors.Kind(err), fmt.Sprintf("unable to listen for changes for '%s' custom configuration", WritableInfoSectionName), err)
@@ -82,12 +84,12 @@ func (d *Driver) updateWritableConfig(rawWritableConfig interface{}) {
 	d.cleanup()
 	d.serviceConfig.OPCUAServer.Writable = *updated
 
-	go d.startSubscriber()
+	//go d.startSubscriber()
 }
 
 // Start or restart the subscription listener
-func (d *Driver) startSubscriber() {
-	err := d.startSubscriptionListener()
+func (d *Driver) startSubscriber(deviceName string) {
+	err := d.startSubscriptionListener(deviceName)
 	if err != nil {
 		d.Logger.Errorf("Driver.Initialize: Start incoming data Listener failed: %v", err)
 	}
@@ -107,7 +109,7 @@ func (d *Driver) cleanup() {
 func (d *Driver) AddDevice(deviceName string, protocols map[string]models.ProtocolProperties, adminState models.AdminState) error {
 	// Start subscription listener when device is added.
 	// This does not happen automatically like it does when the device is updated
-	go d.startSubscriber()
+	go d.startSubscriber(deviceName)
 	d.Logger.Debugf("Device %s is added", deviceName)
 	return nil
 }
@@ -155,7 +157,7 @@ func (d *Driver) Discover() error {
 	return fmt.Errorf("driver's Discover function isn't implemented")
 }
 func (d *Driver) ValidateDevice(device models.Device) error {
-	_, err := config.FetchEndpoint(device.Protocols)
+	_, err := config.FetchOPCUAConnDetails(device.Protocols)
 	if err != nil {
 		return fmt.Errorf("invalid protocol properties, %v", err)
 	}

@@ -30,18 +30,14 @@ func (d *Driver) HandleWriteCommands(deviceName string, protocols map[string]mod
 	d.Logger.Debugf("Driver.HandleWriteCommands: protocols: %v, resource: %v, parameters: %v", protocols, reqs[0].DeviceResourceName, params)
 	var err error
 
-	timeout := 60 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	device, err := d.sdk.GetDeviceByName(deviceName)
+	client, err := d.getClientByProtocols(ctx, protocols)
 	if err != nil {
 		return err
 	}
-	client, err := d.getClient(ctx, device)
-	if err != nil {
-		return err
-	}
+	defer client.Close(ctx)
 	if err := client.Connect(ctx); err != nil {
 		d.Logger.Warnf("Driver.HandleWriteCommands: Failed to connect OPCUA client, %s", err)
 		return err
@@ -107,7 +103,7 @@ func (d *Driver) handleWriteCommandRequest(deviceClient *opcua.Client, req sdkMo
 		d.Logger.Errorf("Driver.handleWriteCommands: Write value %v failed: %s", v, err)
 		return err
 	}
-	d.Logger.Infof("Driver.handleWriteCommands: write sucessfully, %v", resp.Results[0])
+	d.Logger.Infof("Driver.handleWriteCommands: write successfully, %v", resp.Results[0])
 	return nil
 }
 

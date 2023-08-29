@@ -11,4 +11,8 @@ const (
 	Protocol = "opcua"
 	// Endpoint is a constant string
 	Endpoint = "Endpoint"
+	Policy   = "Policy"
+	Mode     = "Mode"
+	CertFile = "CertFile"
+	KeyFile  = "KeyFile"
 )

@@ -1,0 +1,43 @@
+name: "OPCUA-Server-additional"
+manufacturer: "Prosys"
+model: "S1"
+labels:
+  - "OPCUA-01"
+  - "test"
+description: "Simulation results of OPCUA Server"
+deviceResources:
+  - name: "Sinusoid"
+    description: "generated sinusoid number"
+    properties:
+      valueType: "Float64"
+      readWrite: "R"
+      defaultValue: 0.0
+      minimum: -2.0
+      maximum: 2.0
+    attributes:
+      { nodeId: "ns=3;i=1004" }
+  -
+    name: "Square"
+    description: "generated square number"
+    properties:
+      valueType: "Float64"
+      readWrite: "R"
+      defaultValue: 0.0
+      minimum: -2.0
+      maximum: 2.0
+    attributes:
+      { nodeId: "ns=3;i=1005" }
+
+deviceCommands:
+  -
+    name: "Square"
+    isHidden: false
+    readWrite: "R"
+    resourceOperations:
+      - { deviceResource: "Square", defaultValue: "0.0" }
+  -
+    name: "Sinusoid"
+    isHidden: false
+    readWrite: "R"
+    resourceOperations:
+      - { deviceResource: "Sinusoid", defaultValue: "0.0" }

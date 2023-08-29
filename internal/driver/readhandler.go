@@ -11,7 +11,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"time"
 
 	sdkModel "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
 	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
@@ -25,16 +24,10 @@ func (d *Driver) HandleReadCommands(deviceName string, protocols map[string]mode
 
 	d.Logger.Debugf("Driver.HandleReadCommands: protocols: %v resource: %v attributes: %v", protocols, reqs[0].DeviceResourceName, reqs[0].Attributes)
 
-	// add an arbitrary timeout to demonstrate how to stop a subscription
-	// with a context.
-	timeout := 60 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	device, err := d.sdk.GetDeviceByName(deviceName)
-	if err != nil {
-		return nil, err
-	}
-	client, err := d.getClient(ctx, device)
+
+	client, err := d.getClientByProtocols(ctx, protocols)
 	if err != nil {
 		return nil, err
 	}
@@ -94,8 +87,7 @@ func makeReadRequest(deviceClient *opcua.Client, req sdkModel.CommandRequest) (*
 		},
 		TimestampsToReturn: ua.TimestampsToReturnBoth,
 	}
-	timeout := 60 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	resp, err := deviceClient.Read(ctx, request)
 	if err != nil {

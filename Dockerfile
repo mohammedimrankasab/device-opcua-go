@@ -15,7 +15,7 @@ COPY . .
 RUN make build
 
 # Next image - Copy built Go binary into new workspace
-FROM alpine:3.14
+FROM alpine:3.17
 
 # dumb-init needed for injected secure bootstrapping entrypoint script when run in secure mode.
 RUN apk add --update --no-cache zeromq dumb-init
@@ -28,4 +28,4 @@ COPY --from=builder /device-opcua-go/cmd/res /res
 COPY LICENSE /
 
 ENTRYPOINT ["/device-opcua"]
-CMD ["--cp=consul://edgex-core-consul:8500", "--registry", "--confdir=/res"]
+CMD ["-cp=consul.http://edgex-core-consul:8500", "--registry"]

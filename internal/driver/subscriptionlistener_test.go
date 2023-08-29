@@ -11,6 +11,9 @@ import (
 	"testing"
 
 	"github.com/edgexfoundry/device-opcua-go/internal/config"
+	"github.com/edgexfoundry/device-sdk-go/v3/pkg/interfaces/mocks"
+	sdkModels "github.com/edgexfoundry/device-sdk-go/v3/pkg/models"
+	"github.com/edgexfoundry/go-mod-core-contracts/v3/clients/logger"
 	"github.com/edgexfoundry/go-mod-core-contracts/v3/models"
 	"github.com/gopcua/opcua"
 	"github.com/gopcua/opcua/ua"
@@ -18,11 +21,32 @@ import (
 
 func Test_startSubscriptionListener(t *testing.T) {
 	t.Run("create context and exit", func(t *testing.T) {
-		d := NewProtocolDriver().(*Driver)
-		d.serviceConfig = &config.ServiceConfig{}
-		d.serviceConfig.OPCUAServer.Writable.Resources = "IntVarTest1"
 
-		err := d.startSubscriptionListener()
+		deviceName := "Test"
+		protocols := make(map[string]models.ProtocolProperties)
+		keyMap := make(map[string]any)
+		keyMap["Endpoint"] = "opc.tcp://test.com:50551"
+		keyMap["Mode"] = "None"
+		keyMap["Policy"] = "None"
+		keyMap["KeyFile"] = ""
+		keyMap["CertFile"] = ""
+		protocols["opcua"] = keyMap
+		device := models.Device{Name: "Test", ProfileName: "Test", Protocols: protocols}
+
+		_, cancel := context.WithCancel(context.Background())
+
+		d := NewProtocolDriver().(*Driver)
+		asyncValues := make(chan *sdkModels.AsyncValues)
+		service := &mocks.DeviceServiceSDK{}
+		service.On("GetDeviceByName", deviceName).Return(device, nil)
+		service.On("LoggingClient").Return(logger.NewMockClient())
+		service.On("AsyncValuesChannel").Return(asyncValues)
+		d.serviceConfig = &config.ServiceConfig{}
+		d.sdk = service
+		d.serviceConfig.OPCUAServer.Writable.Resources = "IntVarTest1"
+		d.ctxCancel = cancel
+
+		err := d.startSubscriptionListener(deviceName)
 		if err == nil {
 			t.Error("expected err to exist in test environment")
 		}
@@ -35,9 +59,34 @@ func Test_onIncomingDataListener(t *testing.T) {
 	t.Run("set reading and exit", func(t *testing.T) {
 		d := NewProtocolDriver().(*Driver)
 		d.serviceConfig = &config.ServiceConfig{}
-		d.serviceConfig.OPCUAServer.DeviceName = "Test"
+		asyncValues := make(chan *sdkModels.AsyncValues)
+		deviceName := "Test"
+		service := &mocks.DeviceServiceSDK{}
+		keyMap := make(map[string]any)
+		keyMap["nodeId"] = "ns=3;i=1001"
+		minValue := new(float64)
+		*minValue = 0
+		maxValue := new(float64)
+		*maxValue = 30
 
-		err := d.onIncomingDataReceived("42", "TestResource")
+		tdr := models.DeviceResource{
+			Description: "test device resource",
+			Name:        "TestResource",
+			IsHidden:    false,
+			Properties: models.ResourceProperties{
+				ValueType:    "Int32",
+				ReadWrite:    "R",
+				Minimum:      minValue,
+				Maximum:      maxValue,
+				DefaultValue: "0",
+			},
+			Attributes: keyMap,
+		}
+		d.Logger = logger.NewMockClient()
+		service.On("DeviceResource", deviceName, "TestResource").Return(tdr, true)
+		service.On("AsyncValuesChannel").Return(asyncValues)
+		d.sdk = service
+		err := d.onIncomingDataReceived("42", "TestResource", deviceName)
 		if err == nil {
 			t.Error("expected err to exist in test environment")
 		}
@@ -108,7 +157,36 @@ func TestDriver_handleDataChange(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			d := NewProtocolDriver().(*Driver)
 			d.serviceConfig = &config.ServiceConfig{}
-			d.handleDataChange(tt.dcn)
+			deviceName := "Test"
+			service := &mocks.DeviceServiceSDK{}
+			keyMap := make(map[string]any)
+			keyMap["nodeId"] = "ns=3;i=1001"
+			minValue := new(float64)
+			*minValue = 0
+			maxValue := new(float64)
+			*maxValue = 30
+
+			tdr := models.DeviceResource{
+				Description: "test device resource",
+				Name:        "TestResource",
+				IsHidden:    false,
+				Properties: models.ResourceProperties{
+					ValueType:    "Int32",
+					ReadWrite:    "R",
+					Minimum:      minValue,
+					Maximum:      maxValue,
+					DefaultValue: "0",
+				},
+				Attributes: keyMap,
+			}
+			d.Logger = logger.NewMockClient()
+			service.On("DeviceResource", deviceName, "TestResource").Return(tdr, true)
+			d.sdk = service
+			d.resourceMap = tt.resourceMap
+			subscriptionMap := make(map[uint32]string)
+			subscriptionMap[432] = "Test"
+			d.deviceMap = subscriptionMap
+			d.handleDataChange(tt.dcn, 432)
 		})
 	}
 }
